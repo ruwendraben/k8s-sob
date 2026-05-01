@@ -1,123 +1,98 @@
 # ShopsOnBoard (SOB)
 
-A multi-service application with client and author services.
+A multi-service marketplace application with a public client and an admin author service, deployed on Kubernetes via Minikube.
 
 ## Project Structure
 
 ```
-├── client/        # Public timeline & seller frontend
-├── author/        # Admin dashboard
-└── .github/       # GitHub Actions workflows
+├── client/        # Public timeline & seller frontend (port 3000)
+├── author/        # Admin dashboard (port 3001)
+├── k8s/           # Kubernetes manifests
+├── deploy.ps1     # Full deploy script (Windows)
+└── destroy.ps1    # Full teardown script (Windows)
 ```
 
-## Setup
+## Architecture
+
+| Pod | Role | Port |
+|---|---|---|
+| `sob-client` | Express app — public facing | 3000 |
+| `sob-author` | Express app — admin only | 3001 |
+| `redis-session` | Session store for sob-client | 6379 |
+
+Both apps connect to AWS RDS (PostgreSQL), AWS SSM (session secret), and AWS S3 (images).
+
+---
+
+## AWS Prerequisites
+
+Ensure the following AWS resources exist before deploying:
+
+### 1. RDS (PostgreSQL)
+- Create a PostgreSQL instance
+- Note the hostname, port, database name, user, and password
+
+### 2. S3 Bucket
+- Create a bucket for user-uploaded images (e.g. `sob-media`)
+- Note the bucket name and region (`eu-west-2`)
+
+### 3. SSM Parameter Store
+- Create a `SecureString` parameter for the session secret
+- e.g. `/sob/session-secret` with a long random string value
+- Note the parameter path
+
+### 4. IAM User
+- Create an IAM user with programmatic access
+- Attach permissions: `s3:PutObject`, `s3:DeleteObject`, `ssm:GetParameter`
+- Note the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+
+---
+
+## Local Deployment (Minikube)
 
 ### Prerequisites
 
-- Node.js 20+
-- Docker
+- Docker Desktop
 - Minikube
 - kubectl
-- Git
+- PowerShell (Windows)
 
-### Generate Lock Files
+> First time only: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
-Before pushing or running CI, generate `package-lock.json` files for both services to ensure reproducible builds:
-
-Note:- for windows have to run "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
-
-```bash
-# Install dependencies for client
-cd client
-npm install
-
-# Install dependencies for author
-cd ../author
-npm install
-
-# Commit the lock files
-cd ..
-git add client/package-lock.json author/package-lock.json
-git commit -m "add package-lock.json files"
-git push origin master
-```
-
-This ensures:
-- Exact dependency versions are locked
-- CI builds are reproducible across all machines
-- GitHub Actions caching works properly
-
-## Development
-
-### Run Locally
-
-```bash
-# Client service
-cd client
-npm run dev
-
-# Author service (in another terminal)
-cd author
-npm run dev
-```
-
-### Run on Minikube (local Kubernetes)
-
-Use the Kubernetes manifests in `k8s/`:
+### 1. Create secret files
 
 ```powershell
-minikube start
-minikube -p minikube docker-env --shell powershell | Invoke-Expression
-docker build -t sob-client:local ./client
-docker build -t sob-author:local ./author
-
-# copy and edit secrets first
 Copy-Item .\k8s\client-secret.example.yaml .\k8s\client-secret.yaml
 Copy-Item .\k8s\author-secret.example.yaml .\k8s\author-secret.yaml
-
-# create the sob namespace before applying secrets
-kubectl apply -f .\k8s\namespace.yaml
-
-kubectl apply -f .\k8s\client-secret.yaml
-kubectl apply -f .\k8s\author-secret.yaml
-kubectl apply -k .\k8s
-
-minikube service sob-client -n sob --url
-minikube service sob-author -n sob --url
 ```
 
-Full deployment guide: `k8s/README.md`
+Edit both files and fill in your AWS values (RDS, S3, SSM, IAM credentials).
 
-### Run with Docker Compose (legacy local flow)
+### 2. Deploy
 
-```bash
-# Build and run client
-cd client
-docker compose up
-
-# Build and run author (in another terminal)
-cd author
-docker compose up
+```powershell
+.\deploy.ps1
 ```
 
-## CI/CD
+This will:
+- Start Minikube (skipped if already running)
+- Build both Docker images inside Minikube
+- Apply namespace, secrets, and all manifests
+- Wait for pods to be ready
+- Open port-forward tunnels for both services
 
-### GitHub Actions
+**Access:**
+- Client: http://localhost:3000
+- Author: http://localhost:3001
 
-- **CI Workflow** (`.github/workflows/ci.yml`): Runs on push/PR to `master`
-  - Installs dependencies
-  - Runs syntax checks
-  - Builds Docker images
+### 3. Teardown
 
-- **Deploy Workflow** (`.github/workflows/deploy.yml`): Runs on push to `master`
-  - Builds and pushes Docker images to AWS ECR
+Full clean teardown (removes all resources and images):
+```powershell
+.\destroy.ps1
+```
 
-### AWS Setup
-
-1. Create ECR repositories:
-   - `sob-client`
-   - `sob-author`
-
-2. Add GitHub Secrets:
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
+Re-deploy after teardown:
+```powershell
+.\deploy.ps1
+```

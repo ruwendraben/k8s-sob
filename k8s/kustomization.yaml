@@ -7,3 +7,4 @@ resources:
   - client-service.yaml
   - author-deployment.yaml
   - author-service.yaml
+  - redis-session.yaml 
