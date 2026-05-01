@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+*.env
+
+# Secrets — never commit real credentials
+k8s/author-secret.yaml
+k8s/client-secret.yaml

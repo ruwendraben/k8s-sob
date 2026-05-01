@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sob-client
+  namespace: sob
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sob-client
+  template:
+    metadata:
+      labels:
+        app: sob-client
+    spec:
+      containers:
+        - name: sob-client
+          image: sob-client:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: sob-client-env
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 20
