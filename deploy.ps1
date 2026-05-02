@@ -3,6 +3,9 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$SOB_REPO = "https://github.com/ruwendraben/sob.git"
+$SOB_DIR  = "..\sob"
+
 # ── 1. Check secrets exist ────────────────────────────────────────────────────
 if (-not (Test-Path ".\k8s\client-secret.yaml") -or -not (Test-Path ".\k8s\author-secret.yaml")) {
     Write-Host "ERROR: Secret files not found." -ForegroundColor Red
@@ -23,25 +26,34 @@ if ($minikubeStatus -ne "Running") {
     Write-Host "Minikube already running, skipping start." -ForegroundColor DarkGray
 }
 
-# ── 3. Point Docker at Minikube ───────────────────────────────────────────────
-Write-Host "`n[2/6] Configuring Docker to use Minikube's daemon..." -ForegroundColor Cyan
+# ── 3. Clone or update sob app repo ─────────────────────────────────────────
+Write-Host "`n[2/6] Fetching app source from $SOB_REPO..." -ForegroundColor Cyan
+if (Test-Path "$SOB_DIR\.git") {
+    Write-Host "Repo exists, pulling latest..." -ForegroundColor DarkGray
+    git -C $SOB_DIR pull
+} else {
+    git clone $SOB_REPO $SOB_DIR
+}
+
+# ── 4. Point Docker at Minikube ───────────────────────────────────────────────
+Write-Host "`n[3/6] Configuring Docker to use Minikube's daemon..." -ForegroundColor Cyan
 minikube -p minikube docker-env --shell powershell | Invoke-Expression
 
-# ── 4. Build images ───────────────────────────────────────────────────────────
-Write-Host "`n[3/6] Building sob-client image..." -ForegroundColor Cyan
-docker build -t sob-client:local ./client
+# ── 5. Build images ───────────────────────────────────────────────────────────
+Write-Host "`n[4/6] Building sob-client image..." -ForegroundColor Cyan
+docker build -t sob-client:local "$SOB_DIR\client"
 
-Write-Host "`n[4/6] Building sob-author image..." -ForegroundColor Cyan
-docker build -t sob-author:local ./author
+Write-Host "`n[5/6] Building sob-author image..." -ForegroundColor Cyan
+docker build -t sob-author:local "$SOB_DIR\author"
 
-# ── 5. Apply namespace + secrets ─────────────────────────────────────────────
-Write-Host "`n[5/6] Applying namespace and secrets..." -ForegroundColor Cyan
+# ── 6. Apply namespace + secrets ─────────────────────────────────────────────
+Write-Host "`n[6/6] Applying namespace and secrets..." -ForegroundColor Cyan
 kubectl apply -f .\k8s\namespace.yaml
 kubectl apply -f .\k8s\client-secret.yaml
 kubectl apply -f .\k8s\author-secret.yaml
 
-# ── 6. Apply all manifests ────────────────────────────────────────────────────
-Write-Host "`n[6/6] Applying Kubernetes manifests..." -ForegroundColor Cyan
+# ── 7. Apply all manifests ────────────────────────────────────────────────────
+Write-Host "`nApplying Kubernetes manifests..." -ForegroundColor Cyan
 kubectl apply -k .\k8s\
 
 # ── Done ──────────────────────────────────────────────────────────────────────
