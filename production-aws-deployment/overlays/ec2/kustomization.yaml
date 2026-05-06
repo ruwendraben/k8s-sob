@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: sob
+resources:
+    - ../../k8s
+patches:
+    - path: patch-postgres-hostpath.yaml
+      target:
+        kind: Deployment
+        name: postgres
+# EBS StorageClass and PVC are not needed on EC2 — Terraform manages the EBS mount directly.
+# Kustomize cannot delete resources, so we explicitly remove them after apply.
+images:
+    - name: sob-client
+      newName: 397059225137.dkr.ecr.eu-west-2.amazonaws.com/sob-prod/client
+      newTag: latest
+    - name: sob-author
+      newName: 397059225137.dkr.ecr.eu-west-2.amazonaws.com/sob-prod/author
+      newTag: latest

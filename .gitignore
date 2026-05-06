@@ -1,10 +1,6 @@
-# Dependencies
-node_modules/
+# Ignore the sob app source directory
+sob/
 
-# Environment files
-.env
-*.env
-
-# Secrets — never commit real credentials
-k8s/author-secret.yaml
-k8s/client-secret.yaml
+# Ignore production secrets (do not commit real credentials)
+production-aws/k8s/*secret.yaml
+production-aws/k8s/*-secret.yaml

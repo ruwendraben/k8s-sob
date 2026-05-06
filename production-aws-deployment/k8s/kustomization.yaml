@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: sob
 resources:
   - namespace.yaml
+  - postgres.yaml
   - client-deployment.yaml
   - client-service.yaml
   - author-deployment.yaml

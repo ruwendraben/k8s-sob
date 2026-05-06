@@ -13,6 +13,8 @@ spec:
       labels:
         app: sob-author
     spec:
+      imagePullSecrets:
+        - name: ecr-secret
       containers:
         - name: sob-author
           image: sob-author:local
