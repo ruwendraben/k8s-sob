@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sob-author
+  namespace: sob
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sob-author
+  template:
+    metadata:
+      labels:
+        app: sob-author
+    spec:
+      containers:
+        - name: sob-author
+          image: sob-author:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+          envFrom:
+            - secretRef:
+                name: sob-author-env
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: 3001
+            initialDelaySeconds: 20
+            periodSeconds: 20
