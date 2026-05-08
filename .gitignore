@@ -2,5 +2,8 @@
 sob/
 
 # Ignore production secrets (do not commit real credentials)
-production-aws/k8s/*secret.yaml
-production-aws/k8s/*-secret.yaml
+production-aws-deployment/k8s/*secret.yaml
+production-aws-deployment/k8s/*-secret.yaml
+
+local-deployment/k8s/*secret.yaml
+local-deployment/k8s/*-secret.yaml
